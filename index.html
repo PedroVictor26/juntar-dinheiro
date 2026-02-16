@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Desafio 250 Depósitos 💰</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
     <style>
         * {
             margin: 0;
@@ -415,12 +419,62 @@
     </div>
 
     <script>
+        // Firebase Config
+        const firebaseConfig = {
+            apiKey: "AIzaSyAw0IInRjSumt0QIjf1aXbek2nPkL7SiBM",
+            authDomain: "juntar-dinheiro-2a5a9.firebaseapp.com",
+            projectId: "juntar-dinheiro-2a5a9",
+            storageBucket: "juntar-dinheiro-2a5a9.firebasestorage.app",
+            messagingSenderId: "93398848276",
+            appId: "1:93398848276:web:7a7dc6b1d14b1189292801",
+            measurementId: "G-VRBNER4T0N"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
         const TOTAL_DEPOSITS = 250;
         const TOTAL_AMOUNT = 31375;
         let checked = new Set();
+        let userId = null;
+        let isSyncing = false;
 
-        // Carregar do localStorage
-        function loadState() {
+        // Autenticação anônima + carregar dados
+        async function init() {
+            try {
+                const userCredential = await auth.signInAnonymously();
+                userId = userCredential.user.uid;
+
+                // Tentar carregar do Firestore primeiro
+                const doc = await db.collection('users').doc(userId).get();
+                if (doc.exists && doc.data().checked) {
+                    const arr = doc.data().checked;
+                    arr.forEach(n => checked.add(n));
+                    // Sincronizar localStorage com Firestore
+                    saveToLocalStorage();
+                } else {
+                    // Se não tem no Firestore, carregar do localStorage (migração)
+                    loadFromLocalStorage();
+                    // Salvar no Firestore o que tinha no localStorage
+                    if (checked.size > 0) {
+                        await saveToFirestore();
+                    }
+                }
+
+                showToast('☁️ Conectado ao banco de dados!', 'info');
+            } catch (e) {
+                console.warn('Firebase indisponível, usando localStorage:', e);
+                loadFromLocalStorage();
+                showToast('💾 Modo offline - salvando localmente', 'info');
+            }
+
+            createGrid();
+            updateStats();
+        }
+
+        // Carregar do localStorage (fallback)
+        function loadFromLocalStorage() {
             const saved = localStorage.getItem('desafio250_checked');
             if (saved) {
                 try {
@@ -433,8 +487,29 @@
         }
 
         // Salvar no localStorage
-        function saveState() {
+        function saveToLocalStorage() {
             localStorage.setItem('desafio250_checked', JSON.stringify([...checked]));
+        }
+
+        // Salvar no Firestore
+        async function saveToFirestore() {
+            if (!userId || isSyncing) return;
+            isSyncing = true;
+            try {
+                await db.collection('users').doc(userId).set({
+                    checked: [...checked],
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            } catch (e) {
+                console.warn('Erro ao salvar no Firestore:', e);
+            }
+            isSyncing = false;
+        }
+
+        // Salvar em ambos
+        function saveState() {
+            saveToLocalStorage();
+            saveToFirestore();
         }
 
         // Criar grid
@@ -523,9 +598,7 @@
         }
 
         // Inicializar
-        loadState();
-        createGrid();
-        updateStats();
+        init();
     </script>
 </body>
 </html>
