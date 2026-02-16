@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Desafio 250 Depósitos 💰</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            min-height: 100vh;
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2rem;
+            margin-bottom: 24px;
+            font-weight: 700;
+        }
+
+        /* Cards de estatísticas */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #4ade80;
+        }
+
+        /* Barra de progresso */
+        .progress-section {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .progress-header span {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #4ade80, #22c55e);
+            border-radius: 999px;
+            transition: width 0.5s ease;
+            width: 0%;
+        }
+
+        /* Grid de depósitos */
+        .deposits-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+            gap: 8px;
+            margin-bottom: 24px;
+        }
+
+        .deposit-cell {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.8);
+            user-select: none;
+        }
+
+        .deposit-cell:hover {
+            transform: scale(1.1);
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.3);
+            z-index: 1;
+        }
+
+        .deposit-cell.checked {
+            background: linear-gradient(135deg, #4ade80, #22c55e);
+            border-color: #22c55e;
+            color: #fff;
+            box-shadow: 0 2px 10px rgba(74, 222, 128, 0.3);
+        }
+
+        .deposit-cell.checked:hover {
+            background: linear-gradient(135deg, #f87171, #ef4444);
+            border-color: #ef4444;
+            box-shadow: 0 2px 10px rgba(248, 113, 113, 0.3);
+        }
+
+        /* Botões de ação */
+        .actions {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 24px;
+            border-radius: 12px;
+            border: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-reset {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-reset:hover {
+            background: rgba(239, 68, 68, 0.35);
+        }
+
+        /* Modal de confirmação */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: #1e1b4b;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            padding: 32px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .modal h3 {
+            font-size: 1.2rem;
+            margin-bottom: 8px;
+        }
+
+        .modal p {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.9rem;
+            margin-bottom: 24px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .btn-cancel {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-cancel:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-confirm-reset {
+            background: rgba(239, 68, 68, 0.8);
+            color: #fff;
+            border: none;
+        }
+
+        .btn-confirm-reset:hover {
+            background: rgba(239, 68, 68, 1);
+        }
+
+        /* Toast de notificação */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: #1e1b4b;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 14px 20px;
+            color: #fff;
+            font-size: 0.9rem;
+            z-index: 200;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast-icon {
+            font-size: 1.2rem;
+        }
+
+        /* Celebração final */
+        .celebration {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+            padding: 30px;
+            background: rgba(74, 222, 128, 0.1);
+            border: 1px solid rgba(74, 222, 128, 0.3);
+            border-radius: 16px;
+            animation: celebrate 0.5s ease;
+        }
+
+        .celebration.show {
+            display: block;
+        }
+
+        .celebration h2 {
+            font-size: 1.5rem;
+            color: #4ade80;
+            margin-bottom: 8px;
+        }
+
+        .celebration p {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        @keyframes celebrate {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Responsividade */
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 1.4rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .stat-value {
+                font-size: 1.2rem;
+            }
+
+            .deposits-grid {
+                grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
+                gap: 5px;
+            }
+
+            .deposit-cell {
+                font-size: 0.72rem;
+                border-radius: 8px;
+            }
+
+            .actions {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .btn {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Desafio 250 Depósitos 💰</h1>
+
+        <p style="text-align: center; color: rgba(255,255,255,0.6); margin-bottom: 24px; font-size: 0.95rem;">
+            Deposite de R$1 a R$250 e acumule <strong style="color: #4ade80;">R$ 31.375</strong>
+        </p>
+
+        <!-- Estatísticas -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Depositado</div>
+                <div class="stat-value" id="totalDeposited">R$ 0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Progresso</div>
+                <div class="stat-value" id="progressCount">0/250</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Restante</div>
+                <div class="stat-value" id="remaining">R$ 31.375</div>
+            </div>
+        </div>
+
+        <!-- Barra de progresso -->
+        <div class="progress-section">
+            <div class="progress-header">
+                <span>Progresso geral</span>
+                <span id="progressPercent">0.0%</span>
+            </div>
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+        </div>
+
+        <!-- Botões de ação -->
+        <div class="actions">
+            <button class="btn btn-reset" onclick="showResetModal()">
+                🗑️ Recomeçar
+            </button>
+        </div>
+
+        <!-- Grid de depósitos -->
+        <div class="deposits-grid" id="depositsGrid"></div>
+
+        <!-- Celebração -->
+        <div class="celebration" id="celebration">
+            <h2>🎉 Parabéns! 🎉</h2>
+            <p>Você completou o Desafio 250 Depósitos e acumulou <strong>R$ 31.375</strong>!</p>
+        </div>
+    </div>
+
+    <!-- Modal de reset -->
+    <div class="modal-overlay" id="resetModal">
+        <div class="modal">
+            <h3>Recomeçar desafio?</h3>
+            <p>Todo o seu progresso será perdido. Esta ação não pode ser desfeita.</p>
+            <div class="modal-actions">
+                <button class="btn btn-cancel" onclick="hideResetModal()">Cancelar</button>
+                <button class="btn btn-confirm-reset" onclick="resetAll()">Sim, recomeçar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast">
+        <span class="toast-icon" id="toastIcon">✅</span>
+        <span id="toastMessage"></span>
+    </div>
+
+    <script>
+        const TOTAL_DEPOSITS = 250;
+        const TOTAL_AMOUNT = 31375;
+        let checked = new Set();
+
+        // Carregar do localStorage
+        function loadState() {
+            const saved = localStorage.getItem('desafio250_checked');
+            if (saved) {
+                try {
+                    const arr = JSON.parse(saved);
+                    arr.forEach(n => checked.add(n));
+                } catch (e) {
+                    checked = new Set();
+                }
+            }
+        }
+
+        // Salvar no localStorage
+        function saveState() {
+            localStorage.setItem('desafio250_checked', JSON.stringify([...checked]));
+        }
+
+        // Criar grid
+        function createGrid() {
+            const grid = document.getElementById('depositsGrid');
+            grid.innerHTML = '';
+            for (let i = 1; i <= TOTAL_DEPOSITS; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'deposit-cell' + (checked.has(i) ? ' checked' : '');
+                cell.textContent = i;
+                cell.setAttribute('data-value', i);
+                cell.title = `R$ ${i}`;
+                cell.addEventListener('click', () => toggleDeposit(i, cell));
+                grid.appendChild(cell);
+            }
+        }
+
+        // Toggle depósito
+        function toggleDeposit(value, cell) {
+            if (checked.has(value)) {
+                checked.delete(value);
+                cell.classList.remove('checked');
+                showToast(`❌ Depósito de R$ ${value} removido`, 'remove');
+            } else {
+                checked.add(value);
+                cell.classList.add('checked');
+                showToast(`✅ Depósito de R$ ${value} marcado!`, 'add');
+            }
+            saveState();
+            updateStats();
+        }
+
+        // Atualizar estatísticas
+        function updateStats() {
+            let deposited = 0;
+            checked.forEach(v => deposited += v);
+
+            const count = checked.size;
+            const percent = ((count / TOTAL_DEPOSITS) * 100).toFixed(1);
+            const remaining = TOTAL_AMOUNT - deposited;
+
+            document.getElementById('totalDeposited').textContent = `R$ ${deposited.toLocaleString('pt-BR')}`;
+            document.getElementById('progressCount').textContent = `${count}/${TOTAL_DEPOSITS}`;
+            document.getElementById('remaining').textContent = `R$ ${remaining.toLocaleString('pt-BR')}`;
+            document.getElementById('progressPercent').textContent = `${percent}%`;
+            document.getElementById('progressBar').style.width = `${percent}%`;
+
+            // Celebração
+            const celebration = document.getElementById('celebration');
+            if (count === TOTAL_DEPOSITS) {
+                celebration.classList.add('show');
+            } else {
+                celebration.classList.remove('show');
+            }
+        }
+
+        // Modal reset
+        function showResetModal() {
+            document.getElementById('resetModal').classList.add('active');
+        }
+
+        function hideResetModal() {
+            document.getElementById('resetModal').classList.remove('active');
+        }
+
+        // Reset
+        function resetAll() {
+            checked = new Set();
+            saveState();
+            createGrid();
+            updateStats();
+            hideResetModal();
+            showToast('🔄 Desafio reiniciado!', 'reset');
+        }
+
+        // Toast
+        function showToast(message, type) {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toastMessage');
+            toastMessage.textContent = message;
+            toast.classList.add('show');
+            clearTimeout(toast._timeout);
+            toast._timeout = setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2500);
+        }
+
+        // Inicializar
+        loadState();
+        createGrid();
+        updateStats();
+    </script>
+</body>
+</html>
