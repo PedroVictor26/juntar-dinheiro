@@ -6,7 +6,6 @@
     <title>Desafio 250 Depósitos 💰</title>
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
     <style>
         * {
@@ -432,37 +431,44 @@
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-        const auth = firebase.auth();
 
         const TOTAL_DEPOSITS = 250;
         const TOTAL_AMOUNT = 31375;
+        const SHARED_DOC = 'familia'; // documento compartilhado
         let checked = new Set();
-        let userId = null;
         let isSyncing = false;
+        let isConnected = false;
 
-        // Autenticação anônima + carregar dados
+        // Inicializar — documento compartilhado + escuta em tempo real
         async function init() {
             try {
-                const userCredential = await auth.signInAnonymously();
-                userId = userCredential.user.uid;
-
-                // Tentar carregar do Firestore primeiro
-                const doc = await db.collection('users').doc(userId).get();
+                // Carregar dados iniciais do Firestore
+                const doc = await db.collection('desafio').doc(SHARED_DOC).get();
                 if (doc.exists && doc.data().checked) {
                     const arr = doc.data().checked;
                     arr.forEach(n => checked.add(n));
-                    // Sincronizar localStorage com Firestore
                     saveToLocalStorage();
                 } else {
-                    // Se não tem no Firestore, carregar do localStorage (migração)
+                    // Migrar localStorage se existir
                     loadFromLocalStorage();
-                    // Salvar no Firestore o que tinha no localStorage
                     if (checked.size > 0) {
                         await saveToFirestore();
                     }
                 }
 
-                showToast('☁️ Conectado ao banco de dados!', 'info');
+                isConnected = true;
+
+                // Escutar mudanças em tempo real (sincroniza entre dispositivos!)
+                db.collection('desafio').doc(SHARED_DOC).onSnapshot((doc) => {
+                    if (doc.exists && doc.data().checked && !isSyncing) {
+                        checked = new Set(doc.data().checked);
+                        saveToLocalStorage();
+                        createGrid();
+                        updateStats();
+                    }
+                });
+
+                showToast('☁️ Conectado! Dados sincronizam em tempo real', 'info');
             } catch (e) {
                 console.warn('Firebase indisponível, usando localStorage:', e);
                 loadFromLocalStorage();
@@ -491,12 +497,12 @@
             localStorage.setItem('desafio250_checked', JSON.stringify([...checked]));
         }
 
-        // Salvar no Firestore
+        // Salvar no Firestore (documento compartilhado)
         async function saveToFirestore() {
-            if (!userId || isSyncing) return;
+            if (isSyncing) return;
             isSyncing = true;
             try {
-                await db.collection('users').doc(userId).set({
+                await db.collection('desafio').doc(SHARED_DOC).set({
                     checked: [...checked],
                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
@@ -509,7 +515,7 @@
         // Salvar em ambos
         function saveState() {
             saveToLocalStorage();
-            saveToFirestore();
+            if (isConnected) saveToFirestore();
         }
 
         // Criar grid
